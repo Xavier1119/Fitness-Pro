@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fitness Pro Tracker</title>
+    <style>
+        :root {
+            /* --- 強制預設：明亮模式 (White Theme) --- */
+            --bg-color: #ffffff;      /* 1. 最底層：純白背景 (維持不變) */
+            --card-bg: #e0e0e0;       /* 2. 卡片區塊：改為較深的灰色 (原為很淺的 #f2f2f7) */
+            --text-main: #000000;     /* 純黑字 */
+            --text-sec: #666666;      /* 次要文字稍微調深一點以適應新背景 */
+            --input-bg: #ffffff;      /* 輸入框維持白色，在深灰卡片上對比更強 */
+            
+            /* 強調色 (可變更) */
+            --accent-color: #800020;  /* 預設酒紅 */
+            --delete-bg: #ff3b30;     /* 刪除紅 */
+            
+            --radius: 20px;
+            --btn-radius: 12px;
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        /* --- 深色模式 (Dark Mode) --- */
+        body.dark-mode {
+            --bg-color: #000000;
+            --card-bg: #1c1c1e;
+            --text-main: #ffffff;
+            --text-sec: #98989d;
+            --input-bg: #2c2c2e;
+        }
+        
+        /* --- 午夜模式 (Midnight) --- */
+        body.midnight-mode {
+            --bg-color: #0f172a;      /* 深藍底 */
+            --card-bg: #1e293b;       /* 藍灰卡片 */
+            --text-main: #f8fafc;
+            --text-sec: #94a3b8;
+            --input-bg: #0f172a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none; /* 防止長按選取文字影響滑動體驗 */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 20px; /* 手機版邊距 */
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            padding-bottom: 50px; /* 底部留白 */
+        }
+
+        /* --- Header 區域 --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 0 5px;
+        }
+
+        .header-title h1 {
+            font-size: 28px;
+            font-weight: 800;
+            cursor: text;
+            border-bottom: 1px dashed transparent;
+        }
+        .header-title h1:focus {
+            border-bottom-color: var(--text-sec);
+            outline: none;
+        }
+        .header-title p {
+            font-size: 12px;
+            color: var(--text-sec);
+        }
+
+        /* 設定按鈕 (明顯的齒輪) */
+        .settings-btn {
+            background: var(--card-bg);
+            border: 1px solid rgba(0,0,0,0.05);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .settings-btn:active { transform: scale(0.9); }
+
+        /* --- 卡路里顯示 --- */
+        .cal-display {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 15px;
+        }
+        .cal-tag {
+            background: var(--card-bg);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: var(--text-sec);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .cal-tag strong {
+            color: var(--accent-color);
+            font-size: 16px;
+        }
+
+        /* --- 設定面板 (預設隱藏) --- */
+        #settings-panel {
+            display: none;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+            animation: slideDown 0.3s ease;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .theme-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            margin-bottom: 15px;
+        }
+        .theme-btn {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid var(--text-sec);
+            background: transparent;
+            color: var(--text-main);
+            border-radius: 10px;
+            font-size: 12px;
+            opacity: 0.6;
+        }
+        .theme-btn.active {
+            opacity: 1;
+            border-color: var(--accent-color);
+            background: var(--input-bg);
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .color-dot {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            position: relative;
+        }
+        .color-dot.active::after {
+            content: '✓'; color: #fff;
+            position: absolute; left: 50%; top: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+        }
+
+        /* --- 通用卡片 --- */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        }
+        .card h2 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: var(--text-main);
+            opacity: 0.8;
+        }
+
+        /* --- 輸入與按鈕 --- */
+        .row { display: flex; gap: 10px; }
+        .col { flex: 1; }
+        
+        .input-group { margin-bottom: 12px; }
+        label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-sec);
+            margin-bottom: 5px;
+            padding-left: 5px;
+        }
+        
+        input, select {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid transparent;
+            padding: 14px;
+            border-radius: 16px;
+            font-size: 15px;
+            color: var(--text-main);
+            outline: none;
+            /* 讓輸入框在灰底上浮現 */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
+        }
+        input:focus, select:focus {
+            border-color: var(--accent-color);
+        }
+
+        /* 主按鈕 */
+        .btn-main {
+            width: 100%;
+            background: var(--accent-color);
+            color: #fff;
+            border: none;
+            padding: 16px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: transform 0.1s;
+        }
+        .btn-main:active { transform: scale(0.98); }
+
+        /* --- 列表與左滑刪除核心 CSS --- */
+        .log-wrapper {
+            position: relative;
+            height: 75px;
+            margin-bottom: 12px;
+            border-radius: 18px;
+            overflow: hidden; 
+            /* 背景設為紅色，當上面的卡片滑開時，就會看到這個紅色 */
+            background-color: var(--delete-bg); 
+        }
+
+        .delete-btn-area {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 80px; /* 對應滑動的最大距離 */
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+        }
+        
+        .trash-icon {
+            font-size: 24px;
+            color: white;
+            pointer-events: none; /* 讓點擊穿透到下面的 click handler */
+        }
+
+        .log-item {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: var(--card-bg); /* 蓋在紅色上面的卡片 */
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 2;
+            /* 關鍵：使用 transform 移動 */
+            transform: translateX(0);
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            will-change: transform;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .log-left h3 { font-size: 15px; margin-bottom: 4px; }
+        .log-detail { font-size: 12px; color: var(--text-sec); }
+        .log-detail span { 
+            background: var(--input-bg); 
+            padding: 2px 6px; border-radius: 4px; margin-right: 5px; 
+        }
+
+        /* --- 下拉選單小標題修飾 --- */
+        optgroup { color: var(--accent-color); }
+        
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <header>
+        <div class="header-title">
+            <h1 id="app-title" contenteditable="true" spellcheck="false">Fitness Pro</h1>
+            <p>Today's Workout</p>
+        </div>
+        <button class="settings-btn" onclick="toggleSettings()">⚙️</button>
+    </header>
+
+    <div id="settings-panel">
+        <label>主題風格</label>
+        <div class="theme-row">
+            <button class="theme-btn active" onclick="setTheme('light', this)">明亮白</button>
+            <button class="theme-btn" onclick="setTheme('dark', this)">科技黑</button>
+            <button class="theme-btn" onclick="setTheme('midnight', this)">午夜藍</button>
+        </div>
+        <label>主題顏色</label>
+        <div class="theme-row" style="justify-content: space-between;">
+            <div class="color-dot" style="background:#800020;" onclick="setColor('#800020', this)"></div>
+            <div class="color-dot" style="background:#007aff;" onclick="setColor('#007aff', this)"></div>
+            <div class="color-dot" style="background:#34c759;" onclick="setColor('#34c759', this)"></div>
+            <div class="color-dot" style="background:#5856d6;" onclick="setColor('#5856d6', this)"></div>
+            <div class="color-dot" style="background:#ff9500;" onclick="setColor('#ff9500', this)"></div>
+        </div>
+    </div>
+
+    <div class="cal-display">
+        <div class="cal-tag">
+            今日消耗：<strong id="cal-count">0</strong> KCAL
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>個人基本資料</h2>
+        <div class="row">
+            <div class="col input-group">
+                <label>身高 (cm)</label>
+                <input type="number" id="height" onchange="saveProfile()">
+            </div>
+            <div class="col input-group">
+                <label>體重 (kg)</label>
+                <input type="number" id="weight" onchange="saveProfile()">
+            </div>
+            <div class="col input-group">
+                <label>年齡</label>
+                <input type="number" id="age" onchange="saveProfile()">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>新增紀錄</h2>
+        <div class="input-group">
+            <label>訓練動作</label>
+            <select id="exercise-select">
+                <option value="" disabled selected>選擇動作...</option>
+                </select>
+        </div>
+        <div class="row">
+            <div class="col input-group">
+                <label>組數</label>
+                <input type="number" id="sets" placeholder="4">
+            </div>
+            <div class="col input-group">
+                <label>重量/次數</label>
+                <input type="text" id="reps" placeholder="例如: 50kg x 10">
+            </div>
+        </div>
+        <div class="input-group">
+            <label>備註 (選填)</label>
+            <input type="text" id="notes" placeholder="狀況如何？">
+        </div>
+        <button class="btn-main" onclick="addLog()">+ 加入訓練</button>
+    </div>
+
+    <div class="card" style="padding-bottom: 10px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+            <h2>今日清單</h2>
+            <span style="font-size:12px; color:var(--text-sec); cursor:pointer;" onclick="clearToday()">清除全部</span>
+        </div>
+        
+        <div id="log-list">
+            </div>
+    </div>
+
+</div>
+
+<script>
+    /* --- 1. 資料庫與設定 --- */
+    const STORAGE_KEY = 'fitness_pro_v6'; // 更新版本號以重置樣式
+    
+    // 預設資料 (強制 Light Mode)
+    let appData = {
+        title: "Fitness Pro",
+        theme: { mode: 'light', color: '#800020' },
+        profile: { height: '', weight: '', age: '' },
+        logs: []
+    };
+
+    const exerciseDB = {
+        "胸部 (Chest)": [ {n:"槓鈴臥推",c:15}, {n:"啞鈴臥推",c:15}, {n:"伏地挺身",c:8}, {n:"夾胸",c:10} ],
+        "背部 (Back)": [ {n:"引體向上",c:15}, {n:"滑輪下拉",c:12}, {n:"划船",c:15}, {n:"硬舉",c:25} ],
+        "腿部 (Legs)": [ {n:"深蹲",c:20}, {n:"腿推舉",c:18}, {n:"分腿蹲",c:15} ],
+        "肩部 (Shoulders)": [ {n:"肩推",c:12}, {n:"側平舉",c:8}, {n:"前平舉",c:8} ],
+        "手臂 (Arms)": [ {n:"二頭彎舉",c:8}, {n:"三頭下壓",c:8} ],
+        "核心 (Core)": [ {n:"捲腹",c:5}, {n:"棒式",c:5} ]
+    };
+
+    /* --- 2. 初始化 --- */
+    window.onload = function() {
+        initExerciseMenu();
+        loadData();
+        setupTitleEditor();
+    };
+
+    function initExerciseMenu() {
+        const sel = document.getElementById('exercise-select');
+        for (let cat in exerciseDB) {
+            let grp = document.createElement('optgroup');
+            grp.label = cat;
+            exerciseDB[cat].forEach(ex => {
+                let opt = document.createElement('option');
+                opt.value = ex.n;
+                opt.textContent = ex.n;
+                opt.dataset.cal = ex.c;
+                grp.appendChild(opt);
+            });
+            sel.appendChild(grp);
+        }
+    }
+
+    function loadData() {
+        const json = localStorage.getItem(STORAGE_KEY);
+        if (json) {
+            appData = { ...appData, ...JSON.parse(json) };
+        }
+        // 套用資料
+        document.getElementById('app-title').innerText = appData.title;
+        document.getElementById('height').value = appData.profile.height;
+        document.getElementById('weight').value = appData.profile.weight;
+        document.getElementById('age').value = appData.profile.age;
+        
+        // 套用主題
+        setTheme(appData.theme.mode);
+        setColor(appData.theme.color);
+        
+        renderLogs();
+    }
+
+    function saveData() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+    }
+
+    /* --- 3. 主題控制 --- */
+    function toggleSettings() {
+        const p = document.getElementById('settings-panel');
+        p.style.display = (p.style.display === 'block') ? 'none' : 'block';
+    }
+
+    function setTheme(mode, btn) {
+        appData.theme.mode = mode;
+        document.body.className = (mode === 'light') ? '' : (mode + '-mode');
+        
+        // 更新按鈕狀態
+        if (btn) {
+            document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        } else {
+            // 初始化時找對應按鈕
+            const map = {'light':0, 'dark':1, 'midnight':2};
+            const btns = document.querySelectorAll('.theme-btn');
+            if(btns[map[mode]||0]) btns[map[mode]||0].classList.add('active');
+        }
+        saveData();
+    }
+
+    function setColor(color, btn) {
+        appData.theme.color = color;
+        document.documentElement.style.setProperty('--accent-color', color);
+        
+        if(btn) {
+            document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+            btn.classList.add('active');
+        }
+        saveData();
+    }
+
+    function setupTitleEditor() {
+        document.getElementById('app-title').addEventListener('input', function() {
+            appData.title = this.innerText;
+            saveData();
+        });
+    }
+    
+    function saveProfile() {
+        appData.profile.height = document.getElementById('height').value;
+        appData.profile.weight = document.getElementById('weight').value;
+        appData.profile.age = document.getElementById('age').value;
+        saveData();
+    }
+
+    /* --- 4. 紀錄與卡路里 --- */
+    function addLog() {
+        const sel = document.getElementById('exercise-select');
+        const opt = sel.options[sel.selectedIndex];
+        if (!opt || opt.disabled) return alert("請選擇動作");
+        
+        const sets = document.getElementById('sets').value || 0;
+        const reps = document.getElementById('reps').value || '';
+        const cal = (sets * (opt.dataset.cal || 10));
+
+        appData.logs.unshift({
+            id: Date.now(),
+            date: new Date().toLocaleDateString(),
+            time: new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+            ex: opt.value,
+            sets: sets,
+            reps: reps,
+            cal: cal,
+            note: document.getElementById('notes').value
+        });
+        
+        saveData();
+        renderLogs();
+        // 清空
+        document.getElementById('notes').value = '';
+    }
+
+    function renderLogs() {
+        const list = document.getElementById('log-list');
+        const today = new Date().toLocaleDateString();
+        const logs = appData.logs.filter(l => l.date === today);
+        
+        // 更新卡路里
+        const total = logs.reduce((a,b) => a + (b.cal||0), 0);
+        document.getElementById('cal-count').innerText = total;
+
+        list.innerHTML = '';
+        if (logs.length === 0) {
+            list.innerHTML = '<div style="text-align:center;color:var(--text-sec);padding:20px;font-size:13px;">尚無紀錄</div>';
+            return;
+        }
+
+        logs.forEach(log => {
+            const wrap = document.createElement('div');
+            wrap.className = 'log-wrapper';
+            
+            // 刪除按鈕區 (底層)
+            const delArea = document.createElement('div');
+            delArea.className = 'delete-btn-area';
+            delArea.innerHTML = '<span class="trash-icon">🗑️</span>';
+            delArea.onclick = function() { deleteLog(log.id); };
+
+            // 卡片 (上層)
+            const item = document.createElement('div');
+            item.className = 'log-item';
+            item.innerHTML = `
+                <div class="log-left">
+                    <h3>${log.ex}</h3>
+                    <div class="log-detail">
+                        <span>${log.sets}組</span>
+                        <span>${log.reps}</span>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:12px;color:var(--text-sec);">${log.time}</div>
+                    <div style="font-size:12px;color:var(--accent-color);">${log.note||''}</div>
+                </div>
+            `;
+
+            // 綁定滑動邏輯
+            bindSwipeLogic(item, log.id);
+
+            wrap.appendChild(delArea);
+            wrap.appendChild(item);
+            list.appendChild(wrap);
+        });
+    }
+
+    /* --- 5. 左滑邏輯 (核心修正) --- */
+    function bindSwipeLogic(el, id) {
+        let startX = 0;
+        let currentX = 0;
+        let isDragging = false;
+        const MAX_SWIPE = -80; 
+        let autoCloseTimer = null;
+
+        // 觸控開始
+        el.addEventListener('touchstart', e => {
+            startX = e.touches[0].clientX;
+            isDragging = true;
+            el.style.transition = 'none'; 
+            if (autoCloseTimer) clearTimeout(autoCloseTimer);
+        }, {passive:true});
+
+        // 觸控移動
+        el.addEventListener('touchmove', e => {
+            if (!isDragging) return;
+            currentX = e.touches[0].clientX;
+            let diff = currentX - startX;
+            if (diff < 0) {
+                let move = Math.max(diff, MAX_SWIPE); 
+                el.style.transform = `translateX(${move}px)`;
+            }
+        }, {passive:true});
+
+        // 觸控結束
+        el.addEventListener('touchend', e => {
+            isDragging = false;
+            el.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            const diff = currentX - startX;
+            if (diff < -50) {
+                el.style.transform = `translateX(${MAX_SWIPE}px)`;
+                autoCloseTimer = setTimeout(() => { el.style.transform = 'translateX(0)'; }, 5000);
+            } else {
+                el.style.transform = 'translateX(0)';
+            }
+        });
+
+        // 電腦版滑鼠支援
+        el.addEventListener('mousedown', e => {
+            startX = e.clientX;
+            isDragging = true;
+            el.style.transition = 'none';
+            if (autoCloseTimer) clearTimeout(autoCloseTimer);
+        });
+        window.addEventListener('mousemove', e => {
+            if(!isDragging) return;
+            let diff = e.clientX - startX;
+            if(diff < 0) el.style.transform = `translateX(${Math.max(diff, MAX_SWIPE)}px)`;
+        });
+        window.addEventListener('mouseup', e => {
+            if(!isDragging) return;
+            isDragging = false;
+            el.style.transition = 'transform 0.3s';
+            let diff = e.clientX - startX;
+            if (diff < -50) {
+                el.style.transform = `translateX(${MAX_SWIPE}px)`;
+                autoCloseTimer = setTimeout(() => { el.style.transform = 'translateX(0)'; }, 5000);
+            } else {
+                el.style.transform = 'translateX(0)';
+            }
+        });
+        
+        el.addEventListener('click', () => {
+             el.style.transform = 'translateX(0)';
+        });
+    }
+
+    function deleteLog(id) {
+        if(navigator.vibrate) navigator.vibrate(50);
+        appData.logs = appData.logs.filter(l => l.id !== id);
+        saveData();
+        renderLogs();
+    }
+
+    function clearToday() {
+        const today = new Date().toLocaleDateString();
+        if (confirm("確定刪除今日所有紀錄？")) {
+            appData.logs = appData.logs.filter(l => l.date !== today);
+            saveData();
+            renderLogs();
+        }
+    }
+</script>
+
+</body>
+</html>
